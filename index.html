@@ -53,7 +53,7 @@
             font-size: 6.5vw;
             font-weight: 900;
             letter-spacing: -1px;
-            line-height: 1.2;
+            line-height: 1.1; /* 縮小行高讓換行更緊湊 */
             -webkit-transition: font-size 0.2s ease-out;
             transition: font-size 0.2s ease-out;
         }
@@ -144,7 +144,7 @@
 <body>
 
     <div class="container">
-        <!-- 左上角：日期 (西元 & 民國) -->
+        <!-- 左上角：日期 (西元格式) -->
         <div class="header">
             <div id="dateDisplay" class="date-text">載入中...</div>
         </div>
@@ -223,12 +223,13 @@
             
             // 日期顯示
             var year = now.getFullYear();
-            var minguoYear = year - 1911;
             var month = now.getMonth() + 1;
             var date = now.getDate();
             var day = getDayName(now.getDay());
             
-            var dateStr = "民國" + minguoYear + "(" + year + ")年" + month + "月" + date + "日 " + day;
+            // 格式改為：2026年2月18日
+            // 並將星期幾移至第二行
+            var dateStr = year + "年" + month + "月" + date + "日<br>" + day;
             document.getElementById('dateDisplay').innerHTML = dateStr;
 
             // 時間顯示
