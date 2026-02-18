@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>iPad 2 Giant Clock</title>
+    <style>
+        /* 針對舊版 Safari (iOS 9) 的核心 CSS 優化 */
+        * {
+            -webkit-box-sizing: border-box;
+            box-sizing: border-box;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #000000;
+            color: #FFFF00; /* 亮黃色 */
+            font-family: "Courier New", Courier, monospace; /* 等寬字體確保秒數跳動不晃動 */
+            overflow: hidden;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        /* 使用 Flexbox 填滿版面 */
+        .container {
+            display: -webkit-box;
+            display: -webkit-flex;
+            display: flex;
+            -webkit-box-orient: vertical;
+            -webkit-box-direction: normal;
+            -webkit-flex-direction: column;
+            flex-direction: column;
+            -webkit-box-pack: justify;
+            -webkit-justify-content: space-between;
+            justify-content: space-between;
+            width: 100%;
+            height: 100%;
+            padding: 20px 40px;
+        }
+
+        /* 左上角日期 */
+        .header {
+            text-align: left;
+            width: 100%;
+        }
+
+        .date-text {
+            font-size: 6.5vw;
+            font-weight: 900;
+            letter-spacing: -2px;
+            line-height: 1.1;
+            -webkit-transition: font-size 0.2s ease-out;
+            transition: font-size 0.2s ease-out;
+        }
+
+        /* 中央時間 */
+        .main-clock {
+            -webkit-box-flex: 1;
+            -webkit-flex: 1;
+            flex: 1;
+            display: -webkit-box;
+            display: -webkit-flex;
+            display: flex;
+            -webkit-box-align: center;
+            -webkit-align-items: center;
+            align-items: center;
+            -webkit-box-pack: center;
+            -webkit-justify-content: center;
+            justify-content: center;
+            width: 100%;
+        }
+
+        .time-text {
+            font-size: 14.5vw; 
+            font-weight: 900;
+            text-align: center;
+            white-space: nowrap;
+            letter-spacing: -5px;
+            -webkit-transition: font-size 0.2s ease-out;
+            transition: font-size 0.2s ease-out;
+        }
+
+        /* 左下角天氣 */
+        .footer {
+            text-align: left;
+            width: 100%;
+        }
+
+        .weather-text {
+            font-size: 5.5vw;
+            font-weight: 800;
+            opacity: 1;
+            -webkit-transition: font-size 0.2s ease-out;
+            transition: font-size 0.2s ease-out;
+        }
+
+        /* 右下角字體調整按鈕 */
+        .size-btn {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background-color: rgba(255, 255, 0, 0.1);
+            border: 2px solid #FFFF00;
+            color: #FFFF00;
+            padding: 10px 20px;
+            font-size: 20px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            z-index: 100;
+        }
+
+        .size-btn:active {
+            background-color: rgba(255, 255, 0, 0.3);
+        }
+
+        ::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- 左上角：日期 -->
+        <div class="header">
+            <div id="dateDisplay" class="date-text">載入日期中...</div>
+        </div>
+
+        <!-- 畫面中央：時間 -->
+        <div class="main-clock">
+            <div id="timeDisplay" class="time-text">00:00:00</div>
+        </div>
+
+        <!-- 左下角：天氣 -->
+        <div class="footer">
+            <div id="weatherDisplay" class="weather-text">獲取天氣中...</div>
+        </div>
+    </div>
+
+    <!-- 右下角：調整按鈕 -->
+    <div id="sizeToggle" class="size-btn">字體大小</div>
+
+    <script>
+        // --- 設定區 ---
+        var FIXED_LAT = 25.0181; 
+        var FIXED_LON = 121.2825; 
+        var AREA_NAME = "新興里";
+        
+        // --- 狀態區 ---
+        var timeOffset = 0; 
+        var fontScales = [1.0, 1.2, 1.4, 0.85]; // 標準, 放大, 特大, 縮小
+        var currentScaleIndex = 0;
+
+        // --- 工具函數 ---
+        function pad(num) {
+            return num < 10 ? '0' + num : num;
+        }
+
+        function getDayName(dayIndex) {
+            var days = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+            return days[dayIndex];
+        }
+
+        function getWeatherDesc(code) {
+            var mapping = {
+                0: '晴天', 1: '晴時多雲', 2: '多雲', 3: '陰天',
+                45: '有霧', 48: '濃霧', 51: '毛毛雨', 53: '中雨', 55: '大雨',
+                61: '陣雨', 63: '雨', 65: '豪雨', 71: '小雪', 73: '雪', 75: '大雪',
+                80: '局部陣雨', 81: '大陣雨', 82: '暴雨', 95: '雷雨', 96: '雷雨', 99: '強雷雨'
+            };
+            return mapping[code] || '未知';
+        }
+
+        // --- 字體調整邏輯 ---
+        function applyFontSize() {
+            var scale = fontScales[currentScaleIndex];
+            // 更新元素的字體大小
+            document.getElementById('dateDisplay').style.fontSize = (6.5 * scale) + 'vw';
+            document.getElementById('timeDisplay').style.fontSize = (14.5 * scale) + 'vw';
+            document.getElementById('weatherDisplay').style.fontSize = (5.5 * scale) + 'vw';
+        }
+
+        document.getElementById('sizeToggle').onclick = function() {
+            currentScaleIndex = (currentScaleIndex + 1) % fontScales.length;
+            applyFontSize();
+        };
+
+        // --- 核心顯示邏輯 ---
+        function updateDisplay() {
+            var now = new Date(new Date().getTime() + timeOffset);
+            
+            var year = now.getFullYear();
+            var minguoYear = year - 1911;
+            var month = now.getMonth() + 1;
+            var date = now.getDate();
+            var day = getDayName(now.getDay());
+            
+            var dateStr = "民國" + minguoYear + "(" + year + ")年" + month + "月" + date + "日 " + day;
+            document.getElementById('dateDisplay').innerHTML = dateStr;
+
+            var h = now.getHours();
+            var m = pad(now.getMinutes());
+            var s = pad(now.getSeconds());
+            
+            var ampm = h >= 12 ? "PM" : "AM";
+            var displayH = h % 12;
+            displayH = displayH ? displayH : 12; 
+            
+            var timeStr = ampm + " " + pad(displayH) + ":" + m + ":" + s;
+            document.getElementById('timeDisplay').innerHTML = timeStr;
+        }
+
+        // --- 網路校時 ---
+        function syncTime() {
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', 'https://worldtimeapi.org/api/ip', true);
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    try {
+                        var data = JSON.parse(xhr.responseText);
+                        var networkTime = new Date(data.datetime).getTime();
+                        var localTime = new Date().getTime();
+                        timeOffset = networkTime - localTime;
+                    } catch (e) {}
+                }
+            };
+            xhr.send();
+        }
+
+        // --- 天氣獲取 ---
+        function updateWeather() {
+            var xhr = new XMLHttpRequest();
+            var url = "https://api.open-meteo.com/v1/forecast?latitude=" + FIXED_LAT + "&longitude=" + FIXED_LON + "&current_weather=true&timezone=Asia%2FTaipei";
+            
+            xhr.open('GET', url, true);
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    try {
+                        var data = JSON.parse(xhr.responseText);
+                        var temp = Math.round(data.current_weather.temperature);
+                        var code = data.current_weather.weathercode;
+                        var desc = getWeatherDesc(code);
+                        document.getElementById('weatherDisplay').innerHTML = AREA_NAME + " " + temp + "度 " + desc;
+                    } catch (e) {
+                        document.getElementById('weatherDisplay').innerHTML = AREA_NAME + " 數據解析中";
+                    }
+                }
+            };
+            xhr.send();
+        }
+
+        // --- 啟動與循環 ---
+        updateDisplay();
+        applyFontSize();
+        setInterval(updateDisplay, 1000); 
+        
+        syncTime();
+        updateWeather();
+
+        setInterval(syncTime, 3600000);    
+        setInterval(updateWeather, 1800000); 
+
+    </script>
+</body>
+</html>

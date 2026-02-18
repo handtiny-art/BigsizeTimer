@@ -1,0 +1,1 @@
+// Deprecated: Application logic is in index.html for legacy Safari 9 compatibility.

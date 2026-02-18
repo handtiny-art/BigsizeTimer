@@ -1,0 +1,1 @@
+// Deprecated: Logic moved to index.html for ES5 compatibility.

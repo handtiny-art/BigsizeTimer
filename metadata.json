@@ -1,0 +1,7 @@
+{
+  "name": "Copy of Legacy iPad Clock App",
+  "description": "A high-contrast, full-screen digital clock with Minguo calendar support and weather info, optimized for large display and visibility.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
